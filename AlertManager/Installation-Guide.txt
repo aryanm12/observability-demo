@@ -1,0 +1,97 @@
+AlertManager Installation Guide:
+--------------------------------
+
+1. Working Prometheus instance running in the Kubernetes Cluster
+
+2. Configuration in Prometheus:
+
+2.1. Prometheus should have the correct alert manager service endpoint in its config.file=/etc/prometheus/prometheus.yml as shown below to send the alert to Alert Manager
+
+Add following lines in the Prometheus-installation.yaml in the ConfigMap prometheus-config in its data section inside prometheus.yml sub-section:
+
+-------------------------------------------------------
+rule_files:
+    - /etc/prometheus/prometheus.rules
+alerting:
+    alertmanagers:
+    - scheme: http
+    static_configs:
+    - targets:
+        - "alertmanager.monitoring.svc:9093"
+-------------------------------------------------------
+
+
+2.2. Again update the ConfigMap prometheus-config to create a prometheus.rules file in it.
+
+This file is used for creating all the alerting rules.
+
+Add following lines in the Prometheus-installation.yaml in the ConfigMap prometheus-config in its data section above prometheus.yaml sub-section:
+
+-------------------------------------------------------
+prometheus.rules: |-
+  groups:
+  - name: pod-resource-alerts
+    rules:        
+    - alert: Critical Pod Memory
+      expr: sum(container_memory_usage_bytes) / sum(container_memory_max_usage_bytes) * 100 > 90
+      for: 5m
+      labels:
+        severity: critical
+        notification: email
+      annotations:
+        summary: Critical Memory Usage
+        description: Pod memory usage is above 90% for 5 minutes
+
+    - alert: Critical Pod CPU
+      expr: sum(rate(container_cpu_usage_seconds_total[5m])) / sum(machine_cpu_cores) * 100 > 90
+      for: 5m
+      labels:
+        severity: critical
+        notification: email
+      annotations:
+        summary: Critical CPU Usage
+        description: Pod CPU usage is above 90% for 5 minutes
+-------------------------------------------------------
+
+2.4. Apply updated prometheus configuration
+
+kubectl apply -f .\AlertManager\prometheus-installation.yaml
+
+2.5. Restart the prometheus pods
+
+kubectl rollout restart deployment prometheus -n monitoring
+
+
+3. If using Gmail for sending email from Alert Manager then generate app password:
+
+Steps Below:
+Go to Google Account:
+Visit https://myaccount.google.com/
+Sign in with your Gmail account if not already signed in
+Search for App Password
+Click on "App passwords" (you may need to enter your password again)
+To create a new app specific password, type a name for it below
+Type a name (e.g., "Alertmanager")
+Click "Create"
+Google will display a 16-character password
+Copy this password - this is what you'll use in your Alertmanager configuration without spaces
+
+
+4. Deploy Alert Manager along with Namespace, Secret, ConfigMap, Deployment & service accounts
+
+- Validate the Alert Manager configs present in file: AlertManager/alert-manager.yaml
+- Update the SMTP settings in the above file
+- kubectl apply -f AlertManager/alert-manager.yaml
+
+5. Validate the AlertManager UI using local port-forwarding:
+
+kubectl port-forward -n monitoring svc/alertmanager 9093:9093
+
+6. As a general rule, after changing any configuration in prometheus-installation.yaml or alert-manager.yaml, restart the respective deployment
+
+kubectl rollout restart deployment prometheus -n monitoring
+kubectl rollout restart deployment alertmanager -n monitoring
+
+7. To debug any issue with Alert Manager, running
+
+kubectl logs -n monitoring deployment/alertmanager

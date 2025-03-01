@@ -1,0 +1,15 @@
+Grafana Installation Guide:
+---------------------------
+
+1. Deploy Grafana along with Namespace, ConfigMap, Deployment & service
+
+kubectl apply -f Grafana\grafana.yaml
+
+2. Get the Load Balancer from the Kubernetes service
+
+kubectl get svc -n monitoring grafana
+
+3. Login credentials passed in plain text in the deployment object, ideally should be stored in a secret:
+
+Username: admin
+Password: admin123

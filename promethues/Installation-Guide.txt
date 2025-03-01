@@ -1,0 +1,118 @@
+Prometheus Windows Installation Guide:
+--------------------------------------
+
+1. Windows Exporter
+
+# Download Windows Exporter
+Invoke-WebRequest -Uri "https://github.com/prometheus-community/windows_exporter/releases/download/v0.29.2/windows_exporter-0.29.2-amd64.msi" -OutFile "windows_exporter.msi"
+
+
+# Install Windows Exporter
+Start-Process msiexec.exe -ArgumentList '/i windows_exporter.msi ENABLED_COLLECTORS=cpu,memory,logical_disk LISTEN_PORT=9182' -Wait
+
+
+2. Node Exporter for Linux and Mac system
+Mac:
+brew install node_exporter
+brew services start node_exporter
+
+By default, it runs on port 9100 (http://localhost:9100/metrics) and collects various system metrics like:
+CPU usage and stats
+Memory usage
+Disk I/O
+Network stats
+File system usage
+Load average
+
+
+3. Prometheus
+
+# Download Prometheus
+Invoke-WebRequest -Uri "https://github.com/prometheus/prometheus/releases/download/v3.0.1/prometheus-3.0.1.windows-amd64.zip" -OutFile "prometheus.zip"
+
+
+# Extract Prometheus
+Expand-Archive -Path "prometheus.zip" -DestinationPath "C:\Prometheus"
+
+
+3. Configuration
+
+Create Prometheus config file at C:\Prometheus\prometheus.yml:
+
+sample for windows: prometheus-win-exporter.yml
+sample for mac: prometheus-node-exporter.yml 
+
+4. Start Prometheus
+
+C:\Prometheus\prometheus-3.0.1.windows-amd64\prometheus.exe --config.file=C:\Prometheus\prometheus.yml
+
+5. Verification
+
+Access Prometheus UI: http://localhost:9090
+
+6. Test queries for metrics:
+
+# CPU Usage
+100 - (avg by (instance) (rate(windows_cpu_time_total{mode!="idle"}[1m])) * 100)
+
+# Memory Usage
+100 * (1 - ((windows_memory_available_bytes) / windows_memory_physical_total_bytes))
+
+
+Prometheus Installation on Kubernetes:
+--------------------------------------
+
+Pre-Rquisites: Add Metrics server in the kubernetes cluster:
+
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+Helm chart published by community for reference: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+
+1. Deploy Prometheus along with Namespace, configmaps & service accounts
+
+kubectl apply -f promethues\prometheus-installation.yaml
+
+2. Deploy the node-metrics and kube-state-metrics exporters
+
+kubectl apply -f promethues\exporters.yaml
+
+3. Open the Prometheus UI:
+
+kubectl get svc -n monitoring
+Get the Load Balancer URL and open it
+
+4. Key Queries
+
+# Shows all targets
+up
+
+# Shows pod states
+kube_pod_status_phase
+
+# Shows CPU metrics
+container_cpu_usage_seconds_total
+
+# Shows memory metrics
+container_memory_working_set_bytes         
+
+# Node Metrics CPU Usage:
+100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+# Node Memory Usage:
+(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+# Pod CPU Usage:
+sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (pod)
+
+# Pod Memory Usage:
+sum(container_memory_working_set_bytes{container!=""}) by (pod)
+
+Cluster State:
+# Pod Status
+sum by (phase) (kube_pod_status_phase)
+
+# Node Status
+kube_node_status_condition
+
+# Deployment Status
+kube_deployment_status_replicas_available

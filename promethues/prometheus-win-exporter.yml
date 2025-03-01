@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'windows'
+    static_configs:
+      - targets: ['localhost:9182']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.+):.*'
+        replacement: '$1'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

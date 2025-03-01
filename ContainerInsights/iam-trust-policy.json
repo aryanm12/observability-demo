@@ -1,0 +1,18 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Federated": "arn:aws:iam::975050024946:oidc-provider/oidc.eks.ap-southeast-1.amazonaws.com/id/50153F9C4FFBB707B856B98A9CA2F3FB"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+                "StringEquals": {
+                    "oidc.eks.ap-southeast-1.amazonaws.com/id/50153F9C4FFBB707B856B98A9CA2F3FB:sub": "system:serviceaccount:amazon-cloudwatch:cloudwatch-agent",
+                    "oidc.eks.ap-southeast-1.amazonaws.com/id/50153F9C4FFBB707B856B98A9CA2F3FB:aud": "sts.amazonaws.com"
+                }
+            }
+        }
+    ]
+}

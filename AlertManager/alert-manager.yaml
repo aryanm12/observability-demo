@@ -1,0 +1,117 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: email-secret
+  namespace: monitoring
+type: Opaque
+stringData:
+  email-password: "jdiqoxvxddzdglqp" #sample value
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml.template: |-
+    global:
+      resolve_timeout: 5m
+      smtp_from: 'aryan.mohan60@gmail.com'
+      smtp_smarthost: 'smtp.gmail.com:587'
+      smtp_auth_username: 'aryan.mohan60@gmail.com'
+      smtp_auth_password: '__SMTP_AUTH_PASSWORD__'
+      smtp_require_tls: true
+
+    route:
+      group_by: ['alertname', 'severity']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'email-notifications'
+
+    receivers:
+    - name: 'email-notifications'
+      email_configs:
+      - to: 'gyansingh1293@gmail.com'
+        send_resolved: true
+        headers:
+          subject: '{{ template "email.default.subject" . }}'
+        html: '{{ template "email.default.html" . }}'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      initContainers:
+      - name: config-templater
+        image: busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          sed "s/__SMTP_AUTH_PASSWORD__/${EMAIL_PASSWORD}/" /tmp/alertmanager.yml.template > /etc/alertmanager/alertmanager.yml
+        env:
+          - name: EMAIL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: email-secret
+                key: email-password
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/alertmanager
+          - name: template-volume
+            mountPath: /tmp
+      containers:
+      - name: alertmanager
+        image: prom/alertmanager:v0.27.0
+        args:
+          - "--config.file=/etc/alertmanager/alertmanager.yml"
+          - "--storage.path=/alertmanager"
+        ports:
+          - containerPort: 9093
+            name: alertmanager
+        env:
+          - name: EMAIL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: email-secret
+                key: email-password
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/alertmanager
+          - name: storage-volume
+            mountPath: /alertmanager
+      volumes:
+        - name: template-volume
+          configMap:
+            name: alertmanager-config
+        - name: config-volume
+          emptyDir: {}
+        - name: storage-volume
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  selector:
+    app: alertmanager
+  ports:
+    - port: 9093
+      targetPort: 9093
+      protocol: TCP
+      name: alertmanager
