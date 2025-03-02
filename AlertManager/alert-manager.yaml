@@ -32,7 +32,7 @@ data:
     receivers:
     - name: 'email-notifications'
       email_configs:
-      - to: 'gyansingh1293@gmail.com'
+      - to: 'aryan.mohan60@gmail.com'
         send_resolved: true
         headers:
           subject: '{{ template "email.default.subject" . }}'
