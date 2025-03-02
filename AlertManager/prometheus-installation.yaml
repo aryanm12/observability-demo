@@ -17,7 +17,7 @@ data:
     - name: pod-resource-alerts
       rules:        
       - alert: Critical Pod Memory
-        expr: sum(container_memory_usage_bytes) / sum(container_memory_max_usage_bytes) * 100 > 90
+        expr: sum(container_memory_max_usage_bytes) / sum(container_memory_usage_bytes) * 100 > 90
         for: 5m
         labels:
           severity: critical
@@ -45,7 +45,7 @@ data:
       - scheme: http
         static_configs:
         - targets:
-          - "alertmanager.monitoring.svc:9093"
+          - "alertmanager:9093"
     scrape_configs:
       # Job for scraping Kubernetes API server metrics
       - job_name: 'kubernetes-apiservers'

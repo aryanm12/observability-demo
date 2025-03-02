@@ -1,72 +1,110 @@
-Prometheus Windows Installation Guide:
+Prometheus Installation Guide:
 --------------------------------------
 
 1. Windows Exporter
 
-# Download Windows Exporter
-Invoke-WebRequest -Uri "https://github.com/prometheus-community/windows_exporter/releases/download/v0.29.2/windows_exporter-0.29.2-amd64.msi" -OutFile "windows_exporter.msi"
+    # Download Windows Exporter
+    Invoke-WebRequest -Uri "https://github.com/prometheus-community/windows_exporter/releases/download/v0.29.2/windows_exporter-0.29.2-amd64.msi" -OutFile "windows_exporter.msi"
 
 
-# Install Windows Exporter
-Start-Process msiexec.exe -ArgumentList '/i windows_exporter.msi ENABLED_COLLECTORS=cpu,memory,logical_disk LISTEN_PORT=9182' -Wait
+    # Install Windows Exporter
+    Start-Process msiexec.exe -ArgumentList '/i windows_exporter.msi ENABLED_COLLECTORS=cpu,memory,logical_disk LISTEN_PORT=9182' -Wait
+
+    # Validate using:
+    http://localhost:9182/metrics
 
 
 2. Node Exporter for Linux and Mac system
-Mac:
-brew install node_exporter
-brew services start node_exporter
 
-By default, it runs on port 9100 (http://localhost:9100/metrics) and collects various system metrics like:
-CPU usage and stats
-Memory usage
-Disk I/O
-Network stats
-File system usage
-Load average
+Mac:
+    brew install node_exporter
+    brew services start node_exporter
+
+Linux:
+    # Download Node Exporter
+    wget https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz
+
+    # Extract the downloaded archive
+    tar xvfz node_exporter-1.9.0.linux-amd64.tar.gz
+
+    # Run the exporter
+    cd node_exporter-1.9.0.linux-amd64/
+    ./node_exporter
+
+Validate: http://localhost:9100/metrics
 
 
 3. Prometheus
 
-# Download Prometheus
-Invoke-WebRequest -Uri "https://github.com/prometheus/prometheus/releases/download/v3.0.1/prometheus-3.0.1.windows-amd64.zip" -OutFile "prometheus.zip"
+For Windows:
+
+    # Download Prometheus:
+    Invoke-WebRequest -Uri "https://github.com/prometheus/prometheus/releases/download/v3.0.1/prometheus-3.0.1.windows-amd64.zip" -OutFile "prometheus.zip"
 
 
-# Extract Prometheus
-Expand-Archive -Path "prometheus.zip" -DestinationPath "C:\Prometheus"
+    # Extract Prometheus:
+    Expand-Archive -Path "prometheus.zip" -DestinationPath "C:\Prometheus"
 
 
-3. Configuration
+    # Configuration:
+    Create Prometheus config file at C:\Prometheus\prometheus.yml:
 
-Create Prometheus config file at C:\Prometheus\prometheus.yml:
+    sample for windows: promethues\prometheus-win-exporter.yml // copy the content from here and place it inside C:\Prometheus\prometheus.yml
 
-sample for windows: prometheus-win-exporter.yml
-sample for mac: prometheus-node-exporter.yml 
+    # Start Prometheus:
+    C:\Prometheus\prometheus-3.0.1.windows-amd64\prometheus.exe --config.file=C:\Prometheus\prometheus.yml
 
-4. Start Prometheus
 
-C:\Prometheus\prometheus-3.0.1.windows-amd64\prometheus.exe --config.file=C:\Prometheus\prometheus.yml
+For Linxu / Mac:
 
-5. Verification
+    # Download Prometheus:
+    wget https://github.com/prometheus/prometheus/releases/download/v3.0.1/prometheus-3.0.1.linux-amd64.tar.gz
+
+    # Extract the downloaded archive:
+    tar xvfz prometheus-3.0.1.linux-amd64.tar.gz
+
+    # Move to a standard location
+    mv prometheus-3.0.1.linux-amd64 /opt/prometheus
+
+    # Configuration:
+    Create Prometheus config file at: /etc/prometheus/prometheus.yml
+
+    sample for Linux / Mac: promethues/prometheus-node-exporter.yml // copy the content from here and place it inside /etc/prometheus/prometheus.yml
+
+    # Start Prometheus:
+    /opt/prometheus/prometheus --config.file=/etc/prometheus/prometheus.yml
+
+
+4. Verification
 
 Access Prometheus UI: http://localhost:9090
 
-6. Test queries for metrics:
+5. Test queries for metrics:
 
-# CPU Usage
-100 - (avg by (instance) (rate(windows_cpu_time_total{mode!="idle"}[1m])) * 100)
+For Windows:
 
-# Memory Usage
-100 * (1 - ((windows_memory_available_bytes) / windows_memory_physical_total_bytes))
+    # CPU Usage
+    100 - (avg by (instance) (rate(windows_cpu_time_total{mode!="idle"}[1m])) * 100)
+
+    # Memory Usage
+    100 * (1 - ((windows_memory_available_bytes) / windows_memory_physical_total_bytes))
+
+
+For Linux / Mac:
+   
+    # CPU Usage
+    100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100)
+
+    # Memory Usage
+    100 * (1 - ((node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes))
 
 
 Prometheus Installation on Kubernetes:
 --------------------------------------
 
-Pre-Rquisites: Add Metrics server in the kubernetes cluster:
+Good from reference purpose only: Helm chart published by community for reference: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
 
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-
-Helm chart published by community for reference: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+Steps:
 
 1. Deploy Prometheus along with Namespace, configmaps & service accounts
 
@@ -79,7 +117,7 @@ kubectl apply -f promethues\exporters.yaml
 3. Open the Prometheus UI:
 
 kubectl get svc -n monitoring
-Get the Load Balancer URL and open it
+Get the Load Balancer URL and Port and open it
 
 4. Key Queries
 
